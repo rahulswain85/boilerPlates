@@ -1,0 +1,202 @@
+#multer middleware
+
+import multer from "multer";
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "public/uploads");
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + "-" + file.originalname);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only image files are allowed"), false);
+    }
+};
+
+const upload = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB
+    }
+});
+
+export default upload;
+
+
+//auth middleware
+
+import jwt from "jsonwebtoken";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+
+export const auth = asyncHandler(async(req, res, next) => {
+    const token = req.cookies.accessToken;
+
+    if (!token) {
+        throw new ApiError(401, "Unauthroized Access or token not provided")
+    }
+
+    const decode = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decode) {
+        throw new ApiError(401, "Unauthroized Access or token not provided");
+    }
+
+    req.user = decode;
+    next();
+})
+
+//error middleware
+
+export const errorHandler = (err, req, res, next) => {
+    return res.status(err.status || 500).json(
+        {
+            success:false,
+            message:err.message,
+            errors:err.errors || []
+        }
+    )
+}
+
+//asyncHandler
+
+export const asyncHandler = (handlerFunction) => {
+    return (req, res, next) => {
+        Promise.resolve(handlerFunction(req, res, next)).catch((err)=>next(err))
+    }
+}
+
+//ApiResponse
+
+class ApiResponse{
+    constructor(statusCode, data, message = "Success") {
+        this.statusCode = statusCode;
+        this.data = data;
+        this.message = message;
+        this.success = statusCode < 400
+    }
+}
+
+export {ApiResponse}
+
+//ApiError
+
+class ApiError extends Error{
+    constructor(statusCode, message = "Something went wrong", errors = []) {
+        super(message)
+        this.statusCode = statusCode
+        this.data = null
+        this.success = false
+        this.errors = errors
+    }
+}
+
+export {ApiError}
+
+//rtk query
+
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+export const api = createApi({
+    reducerPath: "api",
+    baseQuery: fetchBaseQuery({
+        baseUrl: "http://localhost:5000/api", // change accordingly
+        credentials: "include", // for cookies/JWT
+    }),
+    tagTypes: ["User", "Event"],
+
+    endpoints: (builder) => ({
+        // 🔹 GET example
+        getUsers: builder.query({
+            query: () => "/user",
+            providesTags: ["User"],
+        }),
+
+        // 🔹 POST example
+        registerUser: builder.mutation({
+            query: (data) => ({
+                url: "/user/register",
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: ["User"],
+        }),
+
+        // 🔹 LOGIN example
+        loginUser: builder.mutation({
+            query: (data) => ({
+                url: "/user/login",
+                method: "POST",
+                body: data,
+            }),
+        }),
+    }),
+});
+
+export const {
+    useGetUsersQuery,
+    useRegisterUserMutation,
+    useLoginUserMutation,
+} = api;
+
+//redux slice
+
+import { createSlice } from "@reduxjs/toolkit";
+
+const initialState = {
+    user: null,
+    isLoading: false,
+    error: null,
+};
+
+const authSlice = createSlice({
+    name: "auth",
+    initialState,
+    reducers: {
+        setUser: (state, action) => {
+            state.user = action.payload;
+        },
+        logout: (state) => {
+            state.user = null;
+        },
+        setLoading: (state, action) => {
+            state.isLoading = action.payload;
+        },
+        setError: (state, action) => {
+            state.error = action.payload;
+        },
+    },
+});
+
+export const { setUser, logout, setLoading, setError } = authSlice.actions;
+export default authSlice.reducer;
+
+//store
+
+import { configureStore } from "@reduxjs/toolkit";
+import { api } from "./api";
+import authReducer from "./authSlice";
+
+export const store = configureStore({
+    reducer: {
+        [api.reducerPath]: api.reducer,
+        auth: authReducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(api.middleware),
+});
+
+import { Provider } from "react-redux";
+import { store } from "./store";
+
+<Provider store={store}>
+    <App />
+</Provider>
+
