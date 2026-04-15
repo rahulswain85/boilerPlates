@@ -1,45 +1,102 @@
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import RootLayout from "./layouts/RootLayout";
+import "./App.css";
+import AuthGuard from "./components/AuthGuard";
 
-export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
+import { useSelector } from "react-redux";
+import { lazy, Suspense, useEffect } from "react";
+import LoadingElement from "./components/ui/LoadingElement";
+import LandingPage from "./pages/LandingPage";
+import ErrorElement from "./components/ui/ErrorElement";
+
+const Home = lazy(() => import("./pages/Home"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const SignupPage = lazy(() => import("./pages/signupPage"));
+const LeadManagement = lazy(() => import("./pages/LeadManagement"));
+const LeadCalendar = lazy(() => import("./pages/LeadCalender"));
+const SopVideosPage = lazy(() => import("./pages/SopVideosPage"));
+const MyDocument = lazy(() => import("./pages/MyDocument"));
+const EditOrgDetails = lazy(() => import("./pages/EditOrgDetails"));
+const AboutUs = lazy(() => import("./pages/AboutUs"));
+const CallLog = lazy(() => import("./pages/CallLog"));
+const ForgetPasswordPage = lazy(() => import("./pages/ForgetPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+
+// 2. Define the router ONCE outside the component
+const router = createBrowserRouter([
+  {
+    path: "/",
+    errorElement: <ErrorElement />,
+    element: (
+      <AuthGuard requireAuth={true}>
+        <RootLayout />
+      </AuthGuard>
+    ),
+    children: [
+      {
+        errorElement: <ErrorElement />,
+        children: [
+          { index: true, element: <Home /> },
+          { path: "/orgprofile", element: <EditOrgDetails /> },
+          { path: "/documents", element: <MyDocument /> },
+          { path: "/callLogs", element: <CallLog /> },
+          { path: "/sop", element: <SopVideosPage /> },
+          { path: "/leads", element: <LeadManagement /> },
+          { path: "/calendar", element: <LeadCalendar /> },
+        ],
+      },
+    ],
+  },
+  {
+    path: "/login",
+    errorElement: <ErrorElement />,
+    element: (
+      <AuthGuard requireAuth={false}>
+        <LoginPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/register",
+    errorElement: <ErrorElement />,
+    element: (
+      <AuthGuard requireAuth={false}>
+        <SignupPage />
+      </AuthGuard>
+    ),
+  },
+  {
+    path: "/home",
+    errorElement: <ErrorElement />,
+    element: (
+      <AuthGuard requireAuth={false}>
+        <LandingPage />
+      </AuthGuard>
+    ),
+  },
+  { path: "/resetpassword", element: <ForgetPasswordPage /> },
+  { path: "/resetpassword/:token", element: <ResetPasswordPage /> },
+]);
+
+const App = () => {
+  const isDark = useSelector((state) => state.theme.isDark);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   return (
-    <nav className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          
-          {/* Logo */}
-          <div className="text-2xl font-bold text-indigo-600">
-            MegaBlog
-          </div>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-8">
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Home</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">About</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Blog</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Contact</a>
-          </div>
-
-          {/* Mobile Button */}
-          <div className="md:hidden">
-            <button onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden px-4 pb-4 space-y-3">
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Home</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">About</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Blog</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Contact</a>
-        </div>
-      )}
-    </nav>
+    <Suspense fallback={<LoadingElement />}>
+      <RouterProvider router={router} />
+    </Suspense>
   );
-}
+};
+
+export default App;
