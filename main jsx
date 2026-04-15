@@ -1,45 +1,20 @@
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+import { Provider } from "react-redux";
+import { store } from "./store/store.js";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Toaster } from "react-hot-toast";
 
-export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
+createRoot(document.getElementById("root")).render(
+  <>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_CLIENT_ID}>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </GoogleOAuthProvider>
 
-  return (
-    <nav className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
-          
-          {/* Logo */}
-          <div className="text-2xl font-bold text-indigo-600">
-            MegaBlog
-          </div>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-8">
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Home</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">About</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Blog</a>
-            <a href="#" className="text-gray-700 hover:text-indigo-600">Contact</a>
-          </div>
-
-          {/* Mobile Button */}
-          <div className="md:hidden">
-            <button onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <div className="md:hidden px-4 pb-4 space-y-3">
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Home</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">About</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Blog</a>
-          <a href="#" className="block text-gray-700 hover:text-indigo-600">Contact</a>
-        </div>
-      )}
-    </nav>
-  );
-}
+    <Toaster position="top-center" reverseOrder={false} />
+  </>,
+);
